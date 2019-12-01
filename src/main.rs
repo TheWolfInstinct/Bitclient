@@ -5,11 +5,13 @@ use serde::{Serialize, Deserialize};
 use bencode::Bencode;
 use serde_bytes::ByteBuf;
 
+use url::{Url, ParseError};
 
 use std::io;
 use std::io::Read;
 use std::path::Path;
 use std::fs::File;
+use std::net::ToSocketAddrs;
 use std::net::UdpSocket;
 
 #[derive(Debug, Deserialize)]
@@ -103,21 +105,25 @@ fn create_torrent_from_file(path: &Path) -> Result<Torrent, Box<dyn std::error::
     }
 }
 
-fn create_socket(ip: String, message: String) -> std::io::Result<()> {
-    {
-        let socket = UdpSocket::bind("127.0.O.1:34254")?;
-        socket.connect(ip)?;
-        let buf = message.as_bytes();
-        socket.send(buf)?;
+fn create_socket(ip: String, message: String) {
+        let socket = UdpSocket::bind("0.0.0.0:34254").expect("Couldn't bind to address");
+        let url = Url::parse(&ip[..]).expect("Couldn't parse url");
+        let socket_url = format!("{}:{}", url.host().unwrap(), url.port().unwrap().to_string());
+        println!("{:?}", socket_url);
+        let mut addrs_iter = socket_url.to_socket_addrs().expect("Error transforming the address into a SocketAddr");
+        let next_ip = addrs_iter.next().expect("couldn't get next ip in the ip iterator");
+        println!("{:?}", next_ip);
+        socket.connect(next_ip).expect("Couldn't connect to the ip address with the socket"); 
+        let buf = message.as_bytes(); 
+        socket.send(buf).expect("Couldn't send the buffer via socket");
         let mut buf = [0; 10]; 
-        let (amt, src) = socket.recv_from(&mut buf)?;
+        let (amt, src) = socket.recv_from(&mut buf).expect("Couldn't receive data from the target");
         println!("amoun: {}, source: {}, buffer: {:?}", amt, src, buf);
-    }
-    Ok(())
 }
 
 
 fn main() {
     let torrent = create_torrent_from_file(Path::new("./puppy.torrent")).unwrap();
     println!("{:?}", torrent);
+    create_socket(torrent.annonce.unwrap(), String::from("Hello"));
 }
