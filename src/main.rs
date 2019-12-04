@@ -127,6 +127,6 @@ fn main() {
     let torrent = create_torrent_from_file(Path::new("./puppy.torrent")).unwrap();
     println!("{:?}", torrent);
     let socket = UdpSocket::bind("0.0.0.0:34254").expect("Couldn't bind to address");
-    let connect_request: String = make_connect_request();
+    let connect_request: Vec<u8> = make_connect_request();
     udp_send(socket, connect_request, torrent.annonce.unwrap());
 }
